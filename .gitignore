@@ -1,4 +1,5 @@
 source_files/*
+!source_files/.gitkeep
 *.spec
 dist/*
 * copy.py
