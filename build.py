@@ -21,24 +21,37 @@ def calculate_file_hash(filepath):
 def load_ignore_patterns():
     """加载忽略规则"""
     ignore_file = ".installignore"
-    patterns = []
+    always_ignore = []
+    update_ignore = []
     
     if os.path.exists(ignore_file):
         with open(ignore_file, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 # 忽略空行和注释
-                if line and not line.startswith("#"):
-                    patterns.append(line)
+                if not line or line.startswith("#"):
+                    continue
+                
+                # 处理特殊前缀
+                if line.startswith("ALWAYS:"):
+                    always_ignore.append(line.replace("ALWAYS:", "").strip())
+                elif line.startswith("UPDATE:"):
+                    update_ignore.append(line.replace("UPDATE:", "").strip())
+                else:
+                    # 没有前缀的行视为始终忽略
+                    always_ignore.append(line)
     
     # 添加默认忽略规则
-    patterns.extend([
+    default_ignore = [
         ".DS_Store",  # macOS
         "Thumbs.db",  # Windows
         "desktop.ini" # Windows
-    ])
+    ]
     
-    return patterns
+    return {
+        "always": always_ignore + default_ignore,
+        "update": update_ignore
+    }
 
 def should_ignore(path, patterns):
     """检查文件是否应该被忽略"""
@@ -63,7 +76,9 @@ def prepare_source_files():
     
     # 加载忽略规则
     ignore_patterns = load_ignore_patterns()
-    print(f"加载忽略规则: {ignore_patterns}")
+    print(f"加载忽略规则:")
+    print(f"  始终忽略: {ignore_patterns['always']}")
+    print(f"  更新忽略: {ignore_patterns['update']}")
     
     # 获取所有源文件
     all_files = []
@@ -74,8 +89,8 @@ def prepare_source_files():
             rel_path = os.path.relpath(file_path, source_dir)
             
             # 检查是否应该忽略
-            if should_ignore(rel_path, ignore_patterns):
-                print(f"忽略: {rel_path}")
+            if should_ignore(rel_path, ignore_patterns["always"]):
+                print(f"忽略: {rel_path} (始终忽略)")
                 continue
             
             all_files.append(rel_path)
@@ -108,6 +123,13 @@ def prepare_source_files():
     
     print(f"✓ 已创建文件清单: {manifest_path}")
     
+    # 保存忽略规则
+    ignore_path = "ignore_rules.json"
+    with open(ignore_path, 'w', encoding='utf-8') as f:
+        json.dump(ignore_patterns, f, indent=2, ensure_ascii=False)
+    
+    print(f"✓ 已保存忽略规则: {ignore_path}")
+    
     # 确保所有文件都存在
     for rel_path in all_files:
         if not os.path.exists(os.path.join(source_dir, rel_path)):
@@ -128,6 +150,7 @@ def build_installer():
             '--windowed',  # 使用窗口模式，不显示控制台
             '--add-data=source_files;source_files',
             '--add-data=file_manifest.json;.',
+            '--add-data=ignore_rules.json;.',
             '--hidden-import=tkinter',
             '--hidden-import=tkinter.filedialog',
             '--hidden-import=tkinter.messagebox'
@@ -142,7 +165,7 @@ def build_installer():
 
 def cleanup():
     """清理临时文件"""
-    for file_name in ["file_manifest.json"]:
+    for file_name in ["file_manifest.json", "ignore_rules.json"]:
         if os.path.exists(file_name):
             os.remove(file_name)
             print(f"清理: {file_name}")
@@ -176,7 +199,7 @@ def main():
         print("- 用户可以选择安装路径")
         print("- 也可以选择在当前目录安装")
         print("- 更新时会自动检测已有安装")
-        print("- 使用 .installignore 文件忽略不需要的文件")
+        print("- 使用 .installignore 文件控制文件忽略行为")
     else:
         print("构建失败")
 

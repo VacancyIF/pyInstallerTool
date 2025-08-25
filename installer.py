@@ -7,6 +7,7 @@ import subprocess
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from pathlib import Path
+import fnmatch  # 添加这行
 
 def calculate_file_hash(filepath):
     """计算文件的MD5哈希值"""
@@ -35,6 +36,31 @@ def get_embedded_files():
     except Exception as e:
         print(f"加载文件清单时出错: {e}")
         return {}
+
+def get_ignore_rules():
+    """获取忽略规则"""
+    if hasattr(sys, '_MEIPASS'):
+        # 如果是打包后的exe，从临时目录读取
+        rules_path = os.path.join(sys._MEIPASS, "ignore_rules.json")
+    else:
+        # 如果是脚本模式，从当前目录读取
+        rules_path = os.path.join(os.path.dirname(__file__), "ignore_rules.json")
+    
+    try:
+        with open(rules_path, 'r', encoding='utf-8') as f:
+            rules = json.load(f)
+            # 确保规则列表是列表类型
+            if not isinstance(rules.get("always"), list):
+                rules["always"] = []
+            if not isinstance(rules.get("update"), list):
+                rules["update"] = []
+            return rules
+    except Exception as e:
+        print(f"加载忽略规则时出错: {e}")
+        return {
+            "always": [],
+            "update": []
+        }
 
 def get_last_install_path():
     """获取上次安装路径"""
@@ -152,7 +178,32 @@ def select_install_path(default_path=None):
     
     return dialog.result
 
-def install_or_update_files(install_dir):
+def should_ignore(path, patterns):
+    """检查文件是否应该被忽略"""
+    # 检查是否匹配任何忽略模式
+    for pattern in patterns:
+        # 标准化路径和模式
+        normalized_path = path.replace("\\", "/")
+        normalized_pattern = pattern.replace("\\", "/")
+        
+        # 检查通配符匹配
+        if fnmatch.fnmatch(normalized_path, normalized_pattern):
+            return True
+            
+        # 检查目录匹配
+        if normalized_pattern.endswith('/'):
+            # 移除模式末尾的斜杠
+            dir_pattern = normalized_pattern.rstrip('/')
+            # 检查路径是否以该模式开头
+            if normalized_path.startswith(dir_pattern):
+                return True
+                
+        # 检查精确匹配
+        if normalized_path == normalized_pattern:
+            return True
+    return False
+
+def install_or_update_files(install_dir, is_update=False):
     """在指定目录安装或更新文件"""
     # 获取嵌入的文件清单
     embedded_files = get_embedded_files()
@@ -160,17 +211,36 @@ def install_or_update_files(install_dir):
         print("错误: 无法获取文件清单")
         return 0, 0
     
+    # 获取忽略规则
+    ignore_rules = get_ignore_rules()
+    
+    # 打印忽略规则用于调试
+    print(f"忽略规则: 始终忽略={ignore_rules['always']}, 更新忽略={ignore_rules['update']}")
+    
     installed_count = 0
     updated_count = 0
     
     print("=" * 50)
     print(f"目标目录: {install_dir}")
+    print(f"操作类型: {'更新' if is_update else '安装'}")
     
     # 处理所有文件
     for file_path, embedded_hash in embedded_files.items():
         # 获取文件的完整路径
         dest_path = os.path.join(install_dir, file_path)
         
+        # 打印文件路径用于调试
+        print(f"处理文件: {file_path}")
+
+        # 检查是否应该忽略
+        if should_ignore(file_path, ignore_rules["always"]):
+            print(f"✗ 忽略: {file_path} (始终忽略)")
+            continue
+            
+        if is_update and should_ignore(file_path, ignore_rules["update"]):
+            print(f"✗ 忽略: {file_path} (更新忽略)")
+            continue
+
         # 确保目标目录存在
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
         
@@ -248,6 +318,7 @@ def main():
     
     # 获取上次安装路径
     last_install_path = get_last_install_path()
+    print(f"上次安装路径: {last_install_path}")
     
     # 检查是否是更新
     is_update = False
@@ -285,7 +356,7 @@ def main():
     print(f"目标目录: {install_dir}")
     
     # 安装或更新文件
-    installed_count, updated_count = install_or_update_files(install_dir)
+    installed_count, updated_count = install_or_update_files(install_dir, is_update)
     
     # 显示结果
     if installed_count > 0 or updated_count > 0:

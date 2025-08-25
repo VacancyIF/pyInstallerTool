@@ -1,0 +1,361 @@
+# 新增文件忽略功能 README 文档
+
+以下是完整的 README.md 文件内容，包含了新增的文件忽略功能说明：
+
+```markdown
+# 智能安装/更新器
+
+## 简介
+
+这是一个智能安装/更新器解决方案，它允许您轻松分发和更新应用程序文件。用户只需运行一个可执行文件，程序会自动检测是首次安装还是后续更新，并执行相应的操作。
+
+### 主要功能
+
+- **首次安装**：用户选择安装路径，程序安装所有文件
+- **后续更新**：自动检测已有安装，询问用户是否更新
+- **智能更新**：通过文件哈希比较，只更新有变化的文件
+- **自动清理**：安装/更新完成后自动删除安装器
+- **路径记忆**：记住上次安装路径，简化更新流程
+- **文件忽略**：使用 `.installignore` 文件忽略不需要的文件
+
+## 项目结构
+
+```
+MyApp/
+├── source_files/         # 需要安装/更新的文件
+│   ├── app1.exe
+│   ├── app2.exe
+│   ├── config.ini
+│   └── data.txt
+├── .installignore        # 忽略文件规则
+├── installer.py          # 安装器程序
+├── build.py              # 构建脚本
+└── README.md             # 说明文档
+```
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+pip install pyinstaller
+```
+
+### 2. 准备文件
+
+将需要安装/更新的文件放入 `source_files` 目录
+
+### 3. 构建安装器
+
+```bash
+python build.py
+```
+
+构建完成后，在 `dist` 目录中会生成 `installer.exe`
+
+### 4. 分发安装器
+
+将 `dist/installer.exe` 发送给用户
+
+## 用户使用指南
+
+### 首次安装
+
+1. 运行 `installer.exe`
+2. 选择安装路径
+3. 程序自动安装所有文件
+4. 完成后安装器自动删除
+
+### 后续更新
+
+1. 运行新的 `installer.exe`
+2. 程序检测到已有安装，询问是否更新
+3. 确认后自动更新有变化的文件
+4. 完成后安装器自动删除
+
+## 开发者指南
+
+### 添加新文件
+
+1. 将新文件放入 `source_files` 目录
+2. 运行 `python build.py` 重新构建
+3. 将新的 `installer.exe` 发送给用户
+
+### 更新文件
+
+1. 修改 `source_files` 目录中的文件
+2. 运行 `python build.py` 重新构建
+3. 将新的 `installer.exe` 发送给用户
+
+## 文件忽略功能
+
+新增的文件忽略功能允许您指定不需要包含在安装包中的文件，类似于 `.gitignore`。
+
+### 使用方法
+
+1. 在项目根目录创建 `.installignore` 文件
+2. 添加需要忽略的文件规则
+3. 运行 `python build.py` 构建安装器
+
+### 忽略文件格式
+
+1. 每行一个忽略规则
+2. 支持通配符 `*` 和 `?`
+3. 以 `#` 开头的行被视为注释
+4. 以 `/` 结尾的规则匹配目录
+
+### 示例
+
+```
+# 忽略所有日志文件
+*.log
+
+# 忽略临时文件
+*.tmp
+
+# 忽略特定文件
+secret_key.txt
+
+# 忽略特定目录
+temp/
+backups/
+```
+
+### 默认忽略规则
+
+以下文件会被自动忽略：
+- `.DS_Store` (macOS)
+- `Thumbs.db` (Windows)
+- `desktop.ini` (Windows)
+
+### 构建日志示例
+
+```
+加载忽略规则: ['*.log', '*.tmp', 'secret_key.txt', 'temp/', 'backups/']
+忽略: app.log
+忽略: temp/temp_file.tmp
+忽略: secret_key.txt
+忽略: backups/backup_2023.zip
+✓ 已添加: app.exe (哈希: a1b2c3d4...)
+✓ 已添加: config.ini (哈希: e5f6g7h8...)
+✓ 已创建文件清单: file_manifest.json
+构建安装器...
+...
+构建完成! 请查看 dist 目录中的 installer.exe
+```
+
+## 构建脚本说明
+
+`build.py` 脚本会自动：
+
+1. 扫描 `source_files` 目录中的所有文件
+2. 应用 `.installignore` 规则过滤文件
+3. 计算每个文件的 MD5 哈希值
+4. 创建文件清单 `file_manifest.json`
+5. 构建安装器 `installer.exe`
+
+## 注意事项
+
+1. 确保 `source_files` 目录中的所有文件都是最新版本
+2. 每次更新文件后都需要重新运行 `build.py`
+3. 安装器会自动删除自身，无需用户手动清理
+4. 使用 `.installignore` 文件排除不需要的文件
+5. 构建日志会显示被忽略的文件列表，便于调试
+
+## 常见问题
+
+### Q: 为什么某些文件没有被包含在安装包中？
+
+A: 请检查 `.installignore` 文件是否包含了这些文件的忽略规则，或者它们是否匹配默认忽略规则。
+
+### Q: 如何强制包含被忽略的文件？
+
+A: 从 `.installignore` 文件中删除相应的规则，或者使用 `!` 前缀强制包含特定文件：
+```
+# 强制包含特定文件
+!important.log
+```
+
+### Q: 忽略规则不起作用怎么办？
+
+A: 请检查规则格式是否正确，并确保文件路径匹配规则。构建日志会显示被忽略的文件列表，便于调试。
+
+---
+
+# Smart Installer/Updater
+
+## Introduction
+
+This is a smart installer/updater solution that allows you to easily distribute and update application files. Users only need to run a single executable file, and the program will automatically detect whether it's the first installation or an update, and perform the appropriate actions.
+
+### Key Features
+
+- **First Installation**: User selects installation path, program installs all files
+- **Subsequent Updates**: Automatically detects existing installation and asks if user wants to update
+- **Smart Update**: Updates only changed files by comparing file hashes
+- **Auto Cleanup**: Automatically deletes installer after installation/update
+- **Path Memory**: Remembers last installation path to simplify update process
+- **File Ignoring**: Uses `.installignore` file to exclude unnecessary files
+
+## Project Structure
+
+```
+MyApp/
+├── source_files/         # Files to be installed/updated
+│   ├── app1.exe
+│   ├── app2.exe
+│   ├── config.ini
+│   └── data.txt
+├── .installignore        # File ignoring rules
+├── installer.py          # Installer program
+├── build.py               # Build script
+└── README.md              # Documentation
+```
+
+## Quick Start
+
+### 1. Install Dependencies
+
+```bash
+pip install pyinstaller
+```
+
+### 2. Prepare Files
+
+Place files to be installed/updated in the `source_files` directory
+
+### 3. Build Installer
+
+```bash
+python build.py
+```
+
+After building, `installer.exe` will be generated in the `dist` directory
+
+### 4. Distribute Installer
+
+Send `dist/installer.exe` to users
+
+## User Guide
+
+### First Installation
+
+1. Run `installer.exe`
+2. Select installation path
+3. Program automatically installs all files
+4. Installer deletes itself after completion
+
+### Subsequent Updates
+
+1. Run the new `installer.exe`
+2. Program detects existing installation and asks if you want to update
+3. Confirm to automatically update changed files
+4. Installer deletes itself after completion
+
+## Developer Guide
+
+### Adding New Files
+
+1. Place new files in the `source_files` directory
+2. Run `python build.py` to rebuild
+3. Send the new `installer.exe` to users
+
+### Updating Files
+
+1. Modify files in the `source_files` directory
+2. Run `python build.py` to rebuild
+3. Send the new `installer.exe` to users
+
+## File Ignoring Feature
+
+The new file ignoring feature allows you to specify files that should not be included in the installation package, similar to `.gitignore`.
+
+### Usage
+
+1. Create `.installignore` file in the project root directory
+2. Add file ignoring rules
+3. Run `python build.py` to build the installer
+
+### Ignore File Format
+
+1. One ignore rule per line
+2. Supports wildcards `*` and `?`
+3. Lines starting with `#` are comments
+4. Rules ending with `/` match directories
+
+### Example
+
+```
+# Ignore all log files
+*.log
+
+# Ignore temporary files
+*.tmp
+
+# Ignore specific file
+secret_key.txt
+
+# Ignore specific directory
+temp/
+backups/
+```
+
+### Default Ignore Rules
+
+The following files are ignored by default:
+- `.DS_Store` (macOS)
+- `Thumbs.db` (Windows)
+- `desktop.ini` (Windows)
+
+### Build Log Example
+
+```
+Loading ignore patterns: ['*.log', '*.tmp', 'secret_key.txt', 'temp/', 'backups/']
+Ignoring: app.log
+Ignoring: temp/temp_file.tmp
+Ignoring: secret_key.txt
+Ignoring: backups/backup_2023.zip
+✓ Added: app.exe (hash: a1b2c3d4...)
+✓ Added: config.ini (hash: e5f6g7h8...)
+✓ Created file manifest: file_manifest.json
+Building installer...
+...
+Build complete! Check installer.exe in dist directory
+```
+
+## Build Script Explanation
+
+The `build.py` script automatically:
+
+1. Scans all files in the `source_files` directory
+2. Applies `.installignore` rules to filter files
+3. Calculates MD5 hash for each file
+4. Creates file manifest `file_manifest.json`
+5. Builds the installer `installer.exe`
+
+## Notes
+
+1. Ensure all files in the `source_files` directory are up-to-date
+2. You need to rerun `build.py` after each file update
+3. The installer automatically deletes itself, no manual cleanup needed
+4. Use `.installignore` file to exclude unnecessary files
+5. Build logs show ignored files for debugging
+
+## FAQ
+
+### Q: Why are some files not included in the installation package?
+
+A: Check if these files are covered by rules in `.installignore` or if they match default ignore rules.
+
+### Q: How to force include ignored files?
+
+A: Remove the corresponding rule from `.installignore` or use `!` prefix to force include specific files:
+```
+# Force include specific file
+!important.log
+```
+
+### Q: What if ignore rules don't work?
+
+A: Check if the rule format is correct and ensure file paths match the rules. Build logs show ignored files for debugging.
+```

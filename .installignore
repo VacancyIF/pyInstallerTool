@@ -1,1 +1,7 @@
 *.gitkeep
+
+# 用户自定义忽略文件
+UPDATE: tiktokdata/data.txt
+UPDATE: tiktokdata/lib/data.txt
+UPDATE: tiktokdata/lib/category
+UPDATE: tiktokdata/lib/config
