@@ -1,5 +1,6 @@
 # pyInstallerTool
 This is a Python-based packaging tool capable of packaging specified folders into an exe installer.
+
 # 智能安装/更新器
 
 ## 简介
@@ -224,3 +225,4 @@ The `build.py` script automatically:
 1. Ensure all files in the `source_files` directory are up-to-date
 2. You need to rerun `build.py` after each file update
 3. The installer automatically deletes itself, no manual cleanup needed
+
