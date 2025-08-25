@@ -13,6 +13,7 @@ This is a Python-based packaging tool capable of packaging specified folders int
 - **智能更新**：通过文件哈希比较，只更新有变化的文件
 - **自动清理**：安装/更新完成后自动删除安装器
 - **路径记忆**：记住上次安装路径，简化更新流程
+- **文件忽略**：使用 `.installignore` 文件忽略不需要的文件
 
 ## 项目结构
 
@@ -23,6 +24,7 @@ MyApp/
 │   ├── app2.exe
 │   ├── config.ini
 │   └── data.txt
+├── .installignore        # 忽略文件规则
 ├── installer.py           # 安装器程序
 ├── build.py               # 构建脚本
 └── README.md              # 说明文档
@@ -82,20 +84,47 @@ python build.py
 2. 运行 `python build.py` 重新构建
 3. 将新的 `installer.exe` 发送给用户
 
+## 文件忽略功能
+
+新增的文件忽略功能允许您指定不需要包含在安装包中的文件，类似于 `.gitignore`。
+
+### 使用方法
+
+1. 在项目根目录创建 `.installignore` 文件
+2. 添加需要忽略的文件规则
+3. 运行 `python build.py` 构建安装器
+
+### 忽略文件格式
+
+1. 每行一个忽略规则
+2. 支持通配符 `*` 和 `?`
+3. 以 `#` 开头的行被视为注释
+4. 以 `/` 结尾的规则匹配目录
+
+### 默认忽略规则
+
+以下文件会被自动忽略：
+- `.DS_Store` (macOS)
+- `Thumbs.db` (Windows)
+- `desktop.ini` (Windows)
+
 ## 构建脚本说明
 
 `build.py` 脚本会自动：
 
 1. 扫描 `source_files` 目录中的所有文件
-2. 计算每个文件的 MD5 哈希值
-3. 创建文件清单 `file_manifest.json`
-4. 构建安装器 `installer.exe`
+2. 应用 `.installignore` 规则过滤文件
+3. 计算每个文件的 MD5 哈希值
+4. 创建文件清单 `file_manifest.json`
+5. 构建安装器 `installer.exe`
 
 ## 注意事项
 
 1. 确保 `source_files` 目录中的所有文件都是最新版本
 2. 每次更新文件后都需要重新运行 `build.py`
 3. 安装器会自动删除自身，无需用户手动清理
+4. 使用 `.installignore` 文件排除不需要的文件
+5. 构建日志会显示被忽略的文件列表，便于调试
 
 ---
 
