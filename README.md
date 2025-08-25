@@ -1,5 +1,3 @@
-# pyInstallerTool
-This is a Python-based packaging tool capable of packaging specified folders into an exe installer.
 
 # 智能安装/更新器
 
@@ -14,7 +12,7 @@ This is a Python-based packaging tool capable of packaging specified folders int
 - **智能更新**：通过文件哈希比较，只更新有变化的文件
 - **自动清理**：安装/更新完成后自动删除安装器
 - **路径记忆**：记住上次安装路径，简化更新流程
-- **文件忽略**：使用 `.installignore` 文件忽略不需要的文件
+- **文件忽略**：支持两种忽略规则：始终忽略和更新忽略
 
 ## 项目结构
 
@@ -26,9 +24,9 @@ MyApp/
 │   ├── config.ini
 │   └── data.txt
 ├── .installignore        # 忽略文件规则
-├── installer.py           # 安装器程序
-├── build.py               # 构建脚本
-└── README.md              # 说明文档
+├── installer.py          # 安装器程序
+├── build.py              # 构建脚本
+└── README.md             # 说明文档
 ```
 
 ## 快速开始
@@ -87,27 +85,79 @@ python build.py
 
 ## 文件忽略功能
 
-新增的文件忽略功能允许您指定不需要包含在安装包中的文件，类似于 `.gitignore`。
+我们支持两种类型的文件忽略规则：
 
-### 使用方法
+### 1. 始终忽略 (ALWAYS)
+- 安装和更新时都忽略
+- 这些文件不会包含在安装包中
+- 格式：`ALWAYS: <规则>`
 
-1. 在项目根目录创建 `.installignore` 文件
-2. 添加需要忽略的文件规则
-3. 运行 `python build.py` 构建安装器
+### 2. 更新忽略 (UPDATE)
+- 只在更新时忽略
+- 安装时会包含这些文件
+- 更新时不会覆盖这些文件
+- 格式：`UPDATE: <规则>`
 
-### 忽略文件格式
+### 忽略文件格式 (`.installignore`)
 
-1. 每行一个忽略规则
-2. 支持通配符 `*` 和 `?`
-3. 以 `#` 开头的行被视为注释
-4. 以 `/` 结尾的规则匹配目录
+```
+# 始终忽略规则
+ALWAYS: *.log
+ALWAYS: temp/
 
-### 默认忽略规则
+# 更新忽略规则
+UPDATE: user_settings.ini
+UPDATE: config.ini
 
-以下文件会被自动忽略：
-- `.DS_Store` (macOS)
-- `Thumbs.db` (Windows)
-- `desktop.ini` (Windows)
+# 没有前缀的行视为始终忽略
+*.tmp
+backups/
+```
+
+### 使用场景
+
+1. **始终忽略**：
+   - 临时文件、日志文件等不需要包含在安装包中
+   - 开发环境特定的配置文件
+   - 示例文件（只提供默认配置）
+
+2. **更新忽略**：
+   - 用户配置文件（保留用户自定义设置）
+   - 本地缓存文件
+   - 用户生成的数据文件
+
+### 构建日志示例
+
+```
+加载忽略规则:
+  始终忽略: ['*.log', 'temp/', '*.tmp', 'backups/']
+  更新忽略: ['user_settings.ini', 'config.ini']
+忽略: app.log (始终忽略)
+忽略: temp/temp_file.tmp (始终忽略)
+✓ 已添加: app.exe (哈希: a1b2c3d4...)
+✓ 已添加: config.ini (哈希: e5f6g7h8...)
+✓ 已创建文件清单: file_manifest.json
+✓ 已保存忽略规则: ignore_rules.json
+构建安装器...
+...
+构建完成! 请查看 dist 目录中的 installer.exe
+```
+
+### 更新日志示例
+
+```
+检测到已有安装，将进行更新...
+目标目录: C:\Program Files\MyApp
+操作类型: 更新
+处理文件: user_settings.ini
+✗ 忽略: user_settings.ini (更新忽略)
+处理文件: config.ini
+✗ 忽略: config.ini (更新忽略)
+处理文件: app.exe
+✓ 更新完成: app.exe
+操作完成! 安装了 0 个文件, 更新了 1 个文件
+安装器将在2秒后自动删除...
+```
 
 ## 构建脚本说明
 
@@ -117,7 +167,8 @@ python build.py
 2. 应用 `.installignore` 规则过滤文件
 3. 计算每个文件的 MD5 哈希值
 4. 创建文件清单 `file_manifest.json`
-5. 构建安装器 `installer.exe`
+5. 保存忽略规则 `ignore_rules.json`
+6. 构建安装器 `installer.exe`
 
 ## 注意事项
 
@@ -125,7 +176,41 @@ python build.py
 2. 每次更新文件后都需要重新运行 `build.py`
 3. 安装器会自动删除自身，无需用户手动清理
 4. 使用 `.installignore` 文件排除不需要的文件
-5. 构建日志会显示被忽略的文件列表，便于调试
+5. 忽略规则支持通配符 `*` 和 `?`，以及目录匹配（以 `/` 结尾）
+
+## 常见问题
+
+### Q: 为什么某些文件没有被包含在安装包中？
+
+A: 检查是否被 `ALWAYS:` 规则或没有前缀的规则忽略
+
+### Q: 为什么更新时某些文件没有被更新？
+
+A: 检查是否被 `UPDATE:` 规则忽略
+
+### Q: 如何忽略整个目录？
+
+A: 在规则末尾添加 `/`：
+```
+ALWAYS: logs/
+```
+
+### Q: 如何强制包含被忽略的文件？
+
+A: 删除对应的忽略规则
+
+### Q: 忽略规则优先级是什么？
+
+A: 规则优先级：
+1. 始终忽略规则
+2. 更新忽略规则（仅在更新时应用）
+
+### Q: 构建过程中出现错误怎么办？
+
+A: 检查构建日志中的错误信息，确保：
+- `source_files` 目录存在且包含文件
+- 所有文件路径正确
+- 忽略规则格式正确
 
 ---
 
@@ -142,6 +227,7 @@ This is a smart installer/updater solution that allows you to easily distribute 
 - **Smart Update**: Updates only changed files by comparing file hashes
 - **Auto Cleanup**: Automatically deletes installer after installation/update
 - **Path Memory**: Remembers last installation path to simplify update process
+- **File Ignoring**: Supports two ignore types: Always Ignore and Update Ignore
 
 ## Project Structure
 
@@ -152,7 +238,8 @@ MyApp/
 │   ├── app2.exe
 │   ├── config.ini
 │   └── data.txt
-├── installer.py           # Installer program
+├── .installignore        # File ignoring rules
+├── installer.py          # Installer program
 ├── build.py               # Build script
 └── README.md              # Documentation
 ```
@@ -211,18 +298,131 @@ Send `dist/installer.exe` to users
 2. Run `python build.py` to rebuild
 3. Send the new `installer.exe` to users
 
+## File Ignoring Feature
+
+We support two types of file ignoring rules:
+
+### 1. Always Ignore (ALWAYS)
+- Ignored during both installation and update
+- These files are not included in the installation package
+- Format: `ALWAYS: <pattern>`
+
+### 2. Update Ignore (UPDATE)
+- Ignored only during updates
+- Included during first installation
+- Not overwritten during updates
+- Format: `UPDATE: <pattern>`
+
+### Ignore File Format (`.installignore`)
+
+```
+# Always ignore rules
+ALWAYS: *.log
+ALWAYS: temp/
+
+# Update ignore rules
+UPDATE: user_settings.ini
+UPDATE: config.ini
+
+# Lines without prefix are treated as always ignore
+*.tmp
+backups/
+```
+
+### Usage Scenarios
+
+1. **Always Ignore**:
+   - Temporary files, log files that shouldn't be included
+   - Development-specific configuration files
+   - Example files (only provide default configuration)
+
+2. **Update Ignore**:
+   - User configuration files (preserve user customizations)
+   - Local cache files
+   - User-generated data files
+
+### Build Log Example
+
+```
+Loading ignore patterns:
+  Always ignore: ['*.log', 'temp/', '*.tmp', 'backups/']
+  Update ignore: ['user_settings.ini', 'config.ini']
+Ignoring: app.log (Always ignore)
+Ignoring: temp/temp_file.tmp (Always ignore)
+✓ Added: app.exe (Hash: a1b2c3d4...)
+✓ Added: config.ini (Hash: e5f6g7h8...)
+✓ Created file manifest: file_manifest.json
+✓ Saved ignore rules: ignore_rules.json
+Building installer...
+...
+Build complete! Check installer.exe in dist directory
+```
+
+### Update Log Example
+
+```
+Detected existing installation, will perform update...
+Target directory: C:\Program Files\MyApp
+Operation type: Update
+Processing file: user_settings.ini
+✗ Ignored: user_settings.ini (Update ignore)
+Processing file: config.ini
+✗ Ignored: config.ini (Update ignore)
+Processing file: app.exe
+✓ Updated: app.exe
+Operation complete! Installed 0 files, updated 1 file
+Installer will self-delete in 2 seconds...
+```
+
 ## Build Script Explanation
 
 The `build.py` script automatically:
 
 1. Scans all files in the `source_files` directory
-2. Calculates MD5 hash for each file
-3. Creates file manifest `file_manifest.json`
-4. Builds the installer `installer.exe`
+2. Applies `.installignore` rules to filter files
+3. Calculates MD5 hash for each file
+4. Creates file manifest `file_manifest.json`
+5. Saves ignore rules `ignore_rules.json`
+6. Builds the installer `installer.exe`
 
 ## Notes
 
 1. Ensure all files in the `source_files` directory are up-to-date
 2. You need to rerun `build.py` after each file update
 3. The installer automatically deletes itself, no manual cleanup needed
+4. Use `.installignore` file to exclude unnecessary files
+5. Ignore rules support wildcards `*` and `?`, and directory matching (ending with `/`)
 
+## FAQ
+
+### Q: Why are some files not included in the installation package?
+
+A: Check if these files are covered by `ALWAYS:` rules or rules without prefix
+
+### Q: Why are some files not updated during update?
+
+A: Check if these files are covered by `UPDATE:` rules
+
+### Q: How to ignore an entire directory?
+
+A: Add `/` at the end of the rule:
+```
+ALWAYS: logs/
+```
+
+### Q: How to force include ignored files?
+
+A: Remove the corresponding ignore rule
+
+### Q: What is the priority of ignore rules?
+
+A: Rule priority:
+1. Always ignore rules
+2. Update ignore rules (applied only during updates)
+
+### Q: What to do if build fails?
+
+A: Check the error messages in the build log, ensure:
+- `source_files` directory exists and contains files
+- All file paths are correct
+- Ignore rules are properly formatted
