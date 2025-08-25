@@ -2,4 +2,4 @@ source_files/*
 *.spec
 dist/*
 * copy.py
-
+build/*
