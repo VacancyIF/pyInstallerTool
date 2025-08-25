@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 import hashlib
+import fnmatch
 import PyInstaller.__main__
 from pathlib import Path
 
@@ -17,6 +18,39 @@ def calculate_file_hash(filepath):
         print(f"计算文件哈希时出错 {filepath}: {e}")
         return None
 
+def load_ignore_patterns():
+    """加载忽略规则"""
+    ignore_file = ".installignore"
+    patterns = []
+    
+    if os.path.exists(ignore_file):
+        with open(ignore_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                # 忽略空行和注释
+                if line and not line.startswith("#"):
+                    patterns.append(line)
+    
+    # 添加默认忽略规则
+    patterns.extend([
+        ".DS_Store",  # macOS
+        "Thumbs.db",  # Windows
+        "desktop.ini" # Windows
+    ])
+    
+    return patterns
+
+def should_ignore(path, patterns):
+    """检查文件是否应该被忽略"""
+    # 检查是否匹配任何忽略模式
+    for pattern in patterns:
+        if fnmatch.fnmatch(path, pattern):
+            return True
+        # 检查目录是否匹配
+        if pattern.endswith('/') and path.startswith(pattern.rstrip('/')):
+            return True
+    return False
+
 def prepare_source_files():
     """准备源文件并创建清单"""
     # 源文件目录
@@ -27,6 +61,10 @@ def prepare_source_files():
         print(f"错误: 源文件目录 '{source_dir}' 不存在")
         return False
     
+    # 加载忽略规则
+    ignore_patterns = load_ignore_patterns()
+    print(f"加载忽略规则: {ignore_patterns}")
+    
     # 获取所有源文件
     all_files = []
     for root, _, files in os.walk(source_dir):
@@ -34,6 +72,12 @@ def prepare_source_files():
             file_path = os.path.join(root, file)
             # 计算相对路径
             rel_path = os.path.relpath(file_path, source_dir)
+            
+            # 检查是否应该忽略
+            if should_ignore(rel_path, ignore_patterns):
+                print(f"忽略: {rel_path}")
+                continue
+            
             all_files.append(rel_path)
     
     if not all_files:
@@ -132,6 +176,7 @@ def main():
         print("- 用户可以选择安装路径")
         print("- 也可以选择在当前目录安装")
         print("- 更新时会自动检测已有安装")
+        print("- 使用 .installignore 文件忽略不需要的文件")
     else:
         print("构建失败")
 
